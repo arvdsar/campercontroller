@@ -13,6 +13,7 @@ long timestamp = 0;
 #define light2_relay_pin 6
 #define fridge_relay_pin 7
 #define frost_relay_pin 8
+#define level_power_pin 9 //power on dirt/clean water level sensor or relay
 
 //Define ADC for voltage & level sensors
 #define startaccuvoltage_pin A0
@@ -25,6 +26,8 @@ float startaccuvoltage = 12;
 float hhaccuvoltage = 11.8;
 int cleanwaterlevel = 80;
 int dirtwaterlevel = 20;
+
+int reduction = 0; 
 
 //struct to be sent to CamperDisplay
 struct dataSend
@@ -74,15 +77,23 @@ void loop() {
   //collect and send data every 3 seconds to display
   // collect the data values from ADC logic
 
-if(millis() > timestamp+500){
+if(millis() > timestamp + 10000){
   Serial.println("Sending data");
 
-  //this is dummy data for test
-  dataOutStruct.startaccuvoltage = startaccuvoltage++;
-  dataOutStruct.hhaccuvoltage = hhaccuvoltage++;
-  dataOutStruct.cleanwaterlevel = cleanwaterlevel++;
-  dataOutStruct.dirtwaterlevel = dirtwaterlevel++;
+  dataOutStruct.startaccuvoltage = analogRead(startaccuvoltage_pin);
+  dataOutStruct.hhaccuvoltage = analogRead(hhaccuvoltage_pin);
 
+ if(reduction == 6){ //only measure every x - loops
+  //enable power on level sensors (only if they are pin based instead of resistor based)
+    digitalWrite(level_power_pin, HIGH);
+    dataOutStruct.cleanwaterlevel = analogRead(cleanwatersensor_pin);
+    dataOutStruct.dirtwaterlevel = analogRead(dirtwatersensor_pin);
+    //disable power on level pins
+    digitalWrite(level_power_pin, LOW);
+    reduction = 0;
+    }
+  reduction++;
+  
   //sent the data
   myTransfer.sendDatum(dataOutStruct); //sendDatum means only one data set. Check examples of serialtransfer.h
   Serial.println("DONE");
